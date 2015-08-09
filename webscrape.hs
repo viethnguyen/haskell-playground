@@ -13,7 +13,7 @@ main = do
                dropWhile (~/=  "Papers and Notes") tags
   let titles = map getTitles $ papers
   let authors = map getAuthors $ papers
-  putStr $ unlines authors
+  putStr $ unlines $ take 20 titles
       where getAuthors :: [Tag String] -> String
             getAuthors = dequote . unwords . words . fromTagText . head . tail . filter isTagText
             getTitles :: [Tag String] -> String
