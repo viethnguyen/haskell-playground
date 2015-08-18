@@ -15,10 +15,12 @@ import qualified Data.Vector as V
 
 loadImage :: FilePath -> IO (Array D DIM3 Word8)
 loadImage path = do
-  Right (JP.ImageRGBA8 img) <- JP.readImage path
-  return $ fromFunction
-         (Z :. imageHeight img :. imageWidth img :. 4)
-         (\(Z :. y :. x :. c) -> case JP.pixelAt img x y of
+  errOrImage <- JP.readImage path
+  case errOrImage of
+    Right (JP.ImageRGBA8 img) ->
+        return $ fromFunction
+               (Z :. imageHeight img :. imageWidth img :. 4)
+               (\(Z :. y :. x :. c) -> case JP.pixelAt img x y of
                                    JP.PixelRGBA8 r g b a ->
                                        case c of
                                          0 -> r
@@ -26,9 +28,12 @@ loadImage path = do
                                          2 -> b
                                          3 -> a)
 
+    Right _ -> error "readImage: unsupported format"
+    Left err -> error $ "readImage: could not load image." 
+                
 main :: IO ()
 main = do
-  img <- loadImage "lena.jpg"
+  img <- loadImage "tux.png"
   snowflake <- loadImage "snowflake.png"
   let (Z :. height :. width :. _) = extent img
   snowflakeLocations <- replicateM 10 ((,) <$> randomRIO (0, width)
@@ -48,28 +53,28 @@ main = do
              , imageData = convert vector
              }
 
-addSnowflake :: (Source r1 Word8, Source r2 Word8)
-                => Array r1 DIM3 Word8
-                    -> (Int, Int)
-                    -> Array r2 DIM3 Word8
-                    -> Array D DIM3 Word8
+addSnowflake :: (Source r1 Word8, Source r2 Word8) =>
+                Array r1 DIM3 Word8
+                -> (Int, Int)
+                -> Array r2 DIM3 Word8
+                -> Array D DIM3 Word8
                        
 addSnowflake snowflake (offsetX, offsetY) source =
     traverse2 source snowflake resize blend
-
     where
-
       resize sourceSize _ = sourceSize
 
-      blend lookupSource lookupSnowflake p@(Z :. y :. x :. 3) =
+      blend lookupSource lookupSnowflake p@(Z:.y:.x:.3) =
           lookupSource p
 
-      blend lookupSource lookupSnowflake p@(Z :. y :. x :. chan) =
+
+      blend lookupSource lookupSnowflake p@(Z:.y:.x:.chan) =
           let (snowflakeX, snowflakeY) = (x - offsetX, y - offsetY)
               sourcePos = (Z :. snowflakeY :. snowflakeX :. chan)
-              alpha = fromIntegral (lookupSnowflake (Z :. snowflakeY :. snowflakeX :. 3)) / 255
+              alpha = fromIntegral (lookupSnowflake (Z :. snowflakeY :.snowflakeX :.3)) / 255
+
           in if inShape (extent snowflake) sourcePos
              then let a = fromIntegral (lookupSource p)
-                          b = fromIntegral (lookupSnowflake sourcePos)
-                  in round $ a + (b - a) * alpha
-             else lookupSource p
+                      b = fromIntegral (lookupSnowflake sourcePos)
+                  in round $ a + (b-a) * alpha
+             else lookupSource p 
