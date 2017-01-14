@@ -4,7 +4,7 @@
 -- Book: Parallel and Concurrent Programming in Haskell
 -- Chapter 10: Software Transactional Memory 
 
-import Control.Concurrent.STM (STM, TVar, newTVar, readTVar, writeTVar, retry, atomically)
+import Control.Concurrent.STM (STM, TVar, newTVar, readTVar, writeTVar, retry, atomically, orElse)
 
 data TChan a = TChan (TVar (TVarList a)) (TVar (TVarList a))
 
@@ -49,6 +49,18 @@ isEmptyTChan (TChan read _write) = do
     TNil -> return True
     TCons _ _ -> return False
 
+readEitherTChan :: TChan a -> TChan b -> STM (Either a b)
+readEitherTChan a b =
+  fmap Left (readTChan a)
+  `orElse`
+  fmap Right (readTChan b)
+
+dupTChan :: TChan a -> STM (TChan a)
+dupTChan (TChan _ writeVar) = do
+  hole <- readTVar writeVar
+  newReadVar <- newTVar hole
+  return (TChan newReadVar writeVar)
+  
 main = do
   c <- atomically $ newTChan
   atomically $ writeTChan c 'a'
@@ -57,4 +69,7 @@ main = do
   atomically $ unGetTChan c 'a'
   atomically (isEmptyTChan c) >>= print
   atomically (readTChan c) >>= print
-  
+  c2 <- atomically $ dupTChan c
+  atomically $ writeTChan c 'b'
+  atomically (readTChan c) >>= print
+  atomically (readTChan c2) >>= print
