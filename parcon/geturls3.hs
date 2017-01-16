@@ -30,7 +30,7 @@ sites = ["http://www.google.com",
 timeDownload :: String -> IO ()
 timeDownload url = do
   (page, time) <- timeit $ getURL url
-  printf "downloaded %s (%d bytes, %.2f)\n" url (B.length page) time
+  printf "downloaded %s (%d bytes, %.2fs)\n" url (B.length page) time
   
 main = do
   as <- mapM (async . timeDownload) sites
