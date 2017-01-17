@@ -11,3 +11,4 @@ import Control.Applicative -- for GHC < 7.10
 
 getURL :: String -> IO ByteString
 getURL url = L.toStrict <$> simpleHttp url
+
